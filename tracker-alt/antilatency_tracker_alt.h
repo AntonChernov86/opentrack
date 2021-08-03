@@ -19,12 +19,17 @@ namespace Antilatency {
 		bool center();
 
 	private:
-		Antilatency::Alt::Tracking::ICotask _trackingCotask = nullptr;
-		Antilatency::DeviceNetwork::INetwork _network = nullptr;
-		Antilatency::Alt::Tracking::IEnvironment _environment = nullptr;
-		Antilatency::Alt::Tracking::ILibrary _trackingLibrary = nullptr;
-		Antilatency::StorageClient::ILibrary _storageClientLibrary = nullptr;
+		// Libraries
 		Antilatency::DeviceNetwork::ILibrary _adnLibrary = nullptr;
+        Antilatency::Alt::Tracking::ILibrary _trackingLibrary = nullptr;
+        Antilatency::StorageClient::ILibrary _storageClientLibrary = nullptr;
+        Antilatency::Alt::Environment::Selector::ILibrary _environmentSelectorLibrary = nullptr;
+
+        Antilatency::DeviceNetwork::INetwork _network = nullptr;
+        Antilatency::Alt::Environment::IEnvironment _environment = nullptr;
+        Antilatency::Alt::Tracking::ITrackingCotaskConstructor _trackingCotaskConstructor = nullptr;
+
+        Antilatency::Alt::Tracking::ITrackingCotask _trackingCotask = nullptr;
 
         AltTrackerSettings _settings;
 		uint32_t _updateId = 0;

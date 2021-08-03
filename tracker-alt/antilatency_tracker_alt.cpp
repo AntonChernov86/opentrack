@@ -29,15 +29,29 @@ namespace Antilatency {
             return;
         }
 
-        //Define what USB devices will be used by Antilatency Network
-		Antilatency::DeviceNetwork::UsbDeviceType antilatencyUsbDeviceType;
-		antilatencyUsbDeviceType.pid = 0x0000;
-		antilatencyUsbDeviceType.vid = Antilatency::DeviceNetwork::UsbVendorId::Antilatency;
+        // Load Antilatency Alt Environment Selector library
+        _environmentSelectorLibrary =
+            Antilatency::InterfaceContract::getLibraryInterface<Antilatency::Alt::Environment::Selector::ILibrary>(
+                "AntilatencyAltEnvironmentSelector");
+        if (_storageClientLibrary == nullptr) {
+            // Failed to load Antilatency Alt Environment Selector library
+            return;
+        }
+
+        // Create a device network filter and then create a network using that filter.
+        Antilatency::DeviceNetwork::IDeviceFilter filter = _adnLibrary.createFilter();
+        filter.addUsbDevice(Antilatency::DeviceNetwork::Constants::AllUsbDevices);
 
         // Create the network to work with Antilatency devices
-		_network = _adnLibrary.createNetwork(std::vector<Antilatency::DeviceNetwork::UsbDeviceType>{antilatencyUsbDeviceType});
+        _network = _adnLibrary.createNetwork(filter);
         if (_network == nullptr) {
             //Failed to create device network
+            return;
+        }
+
+        _trackingCotaskConstructor = _trackingLibrary.createTrackingCotaskConstructor();
+        if (_trackingCotaskConstructor == nullptr) {
+            // Failed to create tracking cotask constructor
             return;
         }
 	}
@@ -61,13 +75,22 @@ namespace Antilatency {
             return error("Failed to load Antilatency Storage Client library");
         }
 
+        if (_environmentSelectorLibrary == nullptr) {
+            return error("Failed to load Antilatency Alt Environment Selector library");
+        }
+
         if (_network == nullptr) {
             return error("Failed to create device network");
+        }
+
+        if (_trackingCotask == nullptr) {
+            return error("Failed to create tracking cotask constructor");
         }
 
         return status_ok();
     }
 
+    // Find first idle tracking supported node
 	Antilatency::DeviceNetwork::NodeHandle AltTracker::GetTrackingNode() {
 		auto result = Antilatency::DeviceNetwork::NodeHandle::Null;
 
@@ -79,8 +102,7 @@ namespace Antilatency {
             return result;
         }
 
-		auto cotaskConstructor = _trackingLibrary.getTrackingConstructor();
-		auto nodes = cotaskConstructor.findSupportedNodes(_network);
+		auto nodes = _trackingCotaskConstructor.findSupportedNodes(_network);
 		if (!nodes.empty()) {
 			for (auto node : nodes) {
 				if (_network.nodeGetStatus(node) == Antilatency::DeviceNetwork::NodeStatus::Idle) {
@@ -114,7 +136,7 @@ namespace Antilatency {
             return;
         }
 
-		_environment = _trackingLibrary.createEnvironment(environmentCode);
+		_environment = _environmentSelectorLibrary.createEnvironment(environmentCode);
 
 		if (_environment == nullptr) {
             //Failed to create environment from code
@@ -132,8 +154,7 @@ namespace Antilatency {
         }
 
         //Start tracking on node
-		auto cotaskConstructor = _trackingLibrary.getTrackingConstructor();
-		_trackingCotask = cotaskConstructor.startTask(_network, node, _environment);
+		_trackingCotask = _trackingCotaskConstructor.startTask(_network, node, _environment);
 	}
 
 	void AltTracker::StopTrackingTask() {
